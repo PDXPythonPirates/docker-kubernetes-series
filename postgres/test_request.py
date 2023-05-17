@@ -2,9 +2,9 @@ import requests
 import time
 
 url = "http://localhost:8000/hostname"
-while True:
+for i in range(5):
     r = requests.get(url)
     print()
     print(r.text + "\n")
-    time.sleep(0.001)
+    time.sleep(2)
 

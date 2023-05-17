@@ -1,0 +1,75 @@
+# kubernetes-fastapi LoadBalancer Service
+# Enables the pods in a deployment to be accessible from outside the cluster
+apiVersion: v1
+kind: Service
+metadata:
+  name: prophet-model-svc
+spec:
+  selector:
+    app: prophet-model
+  ports:
+    - protocol: "TCP"
+      port: 8000
+      targetPort: 8000
+  type: LoadBalancer
+
+---
+# kf-api Deployment
+# Defines the deployment of the app running in a pod on any worker node
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prophet-model
+  labels:
+    app: prophet-model
+spec:
+  selector:
+    matchLabels:
+      app: prophet-model
+  template:
+    metadata:
+      labels:
+        app: prophet-model
+    spec:
+      containers:
+        - name: predict
+          image: dockerdemo/predict:0.1.0
+          ports:
+            - containerPort: 8000
+          imagePullPolicy: IfNotPresent
+          resources:
+            limits:
+              cpu: 500m
+            requests:
+              cpu: 200m
+        - name: preprocess
+          image: dockerdemo/preprocess:0.1.0
+          ports:
+            - containerPort: 9000
+          imagePullPolicy: IfNotPresent
+          resources:
+            # You must specify requests for CPU to autoscale
+            # based on CPU utilization
+            limits:
+              cpu: 500m
+            requests:
+              cpu: 200m
+---
+apiVersion: autoscaling/v2beta2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: prophet-model-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: prophet-model
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 10
